@@ -1,6 +1,7 @@
 package messagebox
 
 import (
+	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -16,7 +17,7 @@ func BenchmarkOpen(b *testing.B) {
 	// bob sends to jane and jeff a message
 	m, _ := New(bob, []string{jeff.Public, jane.Public}, []byte("hello, world"))
 	for n := 0; n < b.N; n++ {
-		m.Open(jane, []string{jeff.Public, jane.Public, bob.Public, bill.Public})
+		m.Open([]keypair.KeyPair{jeff, jane, bob, bill})
 	}
 }
 
@@ -33,26 +34,27 @@ func TestMessage(t *testing.T) {
 	msg := []byte("hello, world")
 	m, err := New(bob, []string{bob.Public}, msg)
 	assert.Nil(t, err)
-
-	fmt.Println(jeff, bill, jane, m)
-
-	sender, opened, err := m.Open(bob, []string{bob.Public})
+	recipient, opened, err := m.Open([]keypair.KeyPair{bob})
 	assert.Nil(t, err)
-	assert.Equal(t, sender, bob.Public)
+	assert.Equal(t, recipient, bob.Public)
 	assert.Equal(t, msg, opened)
 
 	m, err = New(bob, []string{jane.Public}, msg)
 	assert.Nil(t, err)
-	sender, opened, err = m.Open(jane, []string{jeff.Public, jane.Public, bob.Public, bill.Public})
+	recipient, opened, err = m.Open([]keypair.KeyPair{jane})
 	assert.Nil(t, err)
-	assert.Equal(t, sender, bob.Public)
+	assert.Equal(t, recipient, jane.Public)
 	assert.Equal(t, msg, opened)
 
 	// jeff can't open because its addressed to jane
-	sender, opened, err = m.Open(jeff, []string{jeff.Public, jane.Public, bob.Public, bill.Public})
+	recipient, opened, err = m.Open([]keypair.KeyPair{jeff})
 	assert.NotNil(t, err)
 
 	// jane cna't open if she doesn't know bob exists
-	sender, opened, err = m.Open(jane, []string{bill.Public})
+	recipient, opened, err = m.Open([]keypair.KeyPair{bill})
 	assert.NotNil(t, err)
+
+	// Print out a message
+	mJ, _ := json.MarshalIndent(m, "", " ")
+	fmt.Println(string(mJ))
 }

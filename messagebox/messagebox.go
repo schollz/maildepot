@@ -2,7 +2,9 @@ package messagebox
 
 import (
 	crypto_rand "crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"fmt"
 	"io"
 
 	"github.com/pkg/errors"
@@ -10,21 +12,41 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 )
 
+// Message contains the sender, recipients and encrypted message body.
 type Message struct {
+	// Sender is the public key of the sender
+	Sender string `json:"sender"`
+	// Recipients are a list of the public keys of the recipients
 	Recipients []string `json:"recipients"`
-	Message    string   `json:"message"`
+	// Message is the payload that is encrypted by a random
+	// string which is encoded for each of the recipients
+	Message string `json:"message"`
+	// Hash is a SHA256 hash of the message+sender+salt
+	Hash string `json:"hash"`
 }
 
-// Open will open a message
-func (m *Message) Open(recipient keypair.KeyPair, senders []string) (originalSender string, decrypted []byte, err error) {
+// Open will open a message by trying each of my keys and
+// will return the key that opened the message and the
+// descrypted contents
+func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened string, decrypted []byte, err error) {
+	encrypted, err := base64.StdEncoding.DecodeString(m.Message)
+	if err != nil {
+		err = errors.Wrap(err, "message is not decodable")
+		return
+	}
+
 	var randomEncryption []byte
-	var decodedRecipient []byte
-	for _, rec := range m.Recipients {
-		for _, sender := range senders {
-			originalSender = sender
-			decodedRecipient, err = base64.StdEncoding.DecodeString(rec)
-			randomEncryption, err = recipient.Decrypt(decodedRecipient, sender)
+	for _, recipient := range m.Recipients {
+		var decodedRecipient []byte
+		decodedRecipient, err = base64.StdEncoding.DecodeString(recipient)
+		for _, key := range mykeys {
+			if err != nil {
+				err = errors.Wrap(err, "malformed recipient")
+				return
+			}
+			randomEncryption, err = key.Decrypt(decodedRecipient, m.Sender)
 			if err == nil {
+				keyOpened = key.Public
 				break
 			}
 		}
@@ -33,14 +55,9 @@ func (m *Message) Open(recipient keypair.KeyPair, senders []string) (originalSen
 		}
 	}
 	if err != nil {
+		err = errors.Wrap(err, "could not find valid recipient")
 		return
 	}
-
-	encrypted, err := base64.StdEncoding.DecodeString(m.Message)
-	if err != nil {
-		return
-	}
-
 	var randomEncryption32 [32]byte
 	copy(randomEncryption32[:], randomEncryption[:32])
 	decrypted, err = decrypt(encrypted, randomEncryption32)
@@ -53,10 +70,15 @@ func New(sender keypair.KeyPair, recipients []string, msg []byte) (m Message, er
 	if err != nil {
 		return
 	}
-
+	h := sha256.New()
+	h.Write([]byte("messagebox101"))
+	h.Write(msg)
+	h.Write([]byte(sender.Public))
 	m = Message{
+		Sender:     sender.Public,
 		Message:    base64.StdEncoding.EncodeToString(encrypted),
 		Recipients: make([]string, len(recipients)),
+		Hash:       fmt.Sprintf("sha256/%x", h.Sum(nil)),
 	}
 	for i, rec := range recipients {
 		encrypted, err2 := sender.Encrypt(secretKey[:], rec)
