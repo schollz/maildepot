@@ -60,6 +60,17 @@ func authenticateSignedTime(authenticatedTime string) (actualTime string, err er
 	return
 }
 
+func handlerSlash(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, `Time Authority API:
+		
+GET /now - returns the authenticated time 
+
+GET /authenticate?now=X - returns the time given an authenticated time 
+
+GET /public - returns the public key
+`)
+}
+
 func handlerNow(w http.ResponseWriter, r *http.Request) {
 	jsBytes, _ := json.Marshal(Response{
 		Message: signTime(),
@@ -107,7 +118,7 @@ func logHandler(fn http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		fn(w, r)
-		log.Printf("%s: %s", r.URL, time.Since(start))
+		log.Printf("%s %s", r.URL, time.Since(start))
 	}
 }
 
@@ -115,5 +126,6 @@ func main() {
 	http.HandleFunc("/now", logHandler(handlerNow))
 	http.HandleFunc("/authenticate", logHandler(handlerAuth))
 	http.HandleFunc("/public", logHandler(handlerPublic))
+	http.HandleFunc("/", logHandler(handlerSlash))
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
