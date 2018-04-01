@@ -4,10 +4,13 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/mr-tron/base58/base58"
@@ -16,29 +19,6 @@ import (
 
 var publicKey [32]byte
 var privateKey [64]byte
-var publicKeyString = "3YeftoEoRUk7KKUM2GZErecHpiVjXdViqv8M6pjUwXx9"
-var privateKeyString = "4dDurhiCUmaAkWUAuGximzAjGTPDXZjJJzsrGq7QKAuE3pmk7JpzWRK5kWmwmxVUa9moX4DDgwu5T2D89MbWHzDB"
-
-func init() {
-	generateKeys()
-
-	publicKeyStringBytes, err := base58.FastBase58Decoding(publicKeyString)
-	if err != nil {
-		panic(err)
-	}
-	copy(publicKey[:], publicKeyStringBytes[:32])
-	privateKeyStringBytes, err := base58.FastBase58Decoding(privateKeyString)
-	if err != nil {
-		panic(err)
-	}
-	copy(privateKey[:], privateKeyStringBytes[:64])
-}
-
-func generateKeys() {
-	publicKey, privateKey, _ := sign.GenerateKey(rand.Reader)
-	fmt.Printf("\npublic key: %s", base58.FastBase58Encoding((*publicKey)[:]))
-	fmt.Printf("\nprivate key: %s", base58.FastBase58Encoding((*privateKey)[:]))
-}
 
 func signTime() (authenticatedTime string) {
 	signedMessage := sign.Sign(nil, []byte(time.Now().UTC().String()), &privateKey)
@@ -66,52 +46,27 @@ func handlerSlash(w http.ResponseWriter, r *http.Request) {
 GET /now - returns the authenticated time 
 
 GET /authenticate?now=X - returns the time given an authenticated time 
-
-GET /public - returns the public key
 `)
 }
 
 func handlerNow(w http.ResponseWriter, r *http.Request) {
-	jsBytes, _ := json.Marshal(Response{
-		Message: signTime(),
-		Success: true,
-	})
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsBytes)
-}
-
-func handlerPublic(w http.ResponseWriter, r *http.Request) {
-	jsBytes, _ := json.Marshal(Response{
-		Message: publicKeyString,
-		Success: true,
-	})
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsBytes)
-}
-
-type Response struct {
-	Message string `json:"message"`
-	Success bool   `json:"success"`
+	fmt.Fprintf(w, "%s", signTime())
 }
 
 func handlerAuth(w http.ResponseWriter, r *http.Request) {
-	var js Response
 	m, _ := url.ParseQuery(r.URL.RawQuery)
 	if _, ok := m["now"]; ok {
 		actualTime, err := authenticateSignedTime(m["now"][0])
 		if err == nil {
-			js.Success = true
-			js.Message = actualTime
+			fmt.Fprint(w, actualTime)
 		} else {
-			js.Message = err.Error()
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, err.Error())
 		}
 	} else {
-		js.Message = "must include ?now=X"
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "see / for usage")
 	}
-
-	jsBytes, _ := json.Marshal(js)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsBytes)
 }
 
 func logHandler(fn http.HandlerFunc) http.HandlerFunc {
@@ -123,9 +78,49 @@ func logHandler(fn http.HandlerFunc) http.HandlerFunc {
 }
 
 func main() {
+	var port string
+	flag.StringVar(&port, "port", "8080", "port to listen on")
+	flag.Parse()
+	type Keys struct {
+		Public  string `json:"public"`
+		Private string `json:"private"`
+	}
+	var k Keys
+	if _, err := os.Stat("keys.json"); os.IsNotExist(err) {
+		log.Println("Generating new keys...")
+		publicKey, privateKey, _ := sign.GenerateKey(rand.Reader)
+		k.Public = base58.FastBase58Encoding((*publicKey)[:])
+		k.Private = base58.FastBase58Encoding((*privateKey)[:])
+		bKeys, _ := json.Marshal(k)
+		err := ioutil.WriteFile("keys.json", bKeys, 0644)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		bKeys, err := ioutil.ReadFile("keys.json")
+		if err != nil {
+			panic(err)
+		}
+		err = json.Unmarshal(bKeys, &k)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	publicKeyStringBytes, err := base58.FastBase58Decoding(k.Public)
+	if err != nil {
+		panic(err)
+	}
+	copy(publicKey[:], publicKeyStringBytes[:32])
+	privateKeyStringBytes, err := base58.FastBase58Decoding(k.Private)
+	if err != nil {
+		panic(err)
+	}
+	copy(privateKey[:], privateKeyStringBytes[:64])
+
 	http.HandleFunc("/now", logHandler(handlerNow))
 	http.HandleFunc("/authenticate", logHandler(handlerAuth))
-	http.HandleFunc("/public", logHandler(handlerPublic))
 	http.HandleFunc("/", logHandler(handlerSlash))
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	fmt.Printf("listening on port %s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
