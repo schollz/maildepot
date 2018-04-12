@@ -3,6 +3,7 @@ package keypair
 import (
 	"bytes"
 	crypto_rand "crypto/rand"
+	"encoding/json"
 	"errors"
 	"hash/fnv"
 	"io"
@@ -31,6 +32,11 @@ type KeyPair struct {
 	Private string `json:"private,omitempty"`
 	private *[32]byte
 	public  *[32]byte
+}
+
+func (kp KeyPair) String() string {
+	b, _ := json.Marshal(kp)
+	return string(b)
 }
 
 // New will generate a new key pair, or reload a keypair
