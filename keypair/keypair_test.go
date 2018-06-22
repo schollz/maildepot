@@ -1,13 +1,21 @@
 package keypair
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkNew(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		New()
+	}
+}
+
 func TestBasic(t *testing.T) {
 	bob, err := New()
+	fmt.Println(bob.Public)
 	assert.Nil(t, err)
 	jane, err := New()
 	assert.Nil(t, err)
