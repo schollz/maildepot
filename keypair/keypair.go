@@ -3,29 +3,15 @@ package keypair
 import (
 	"bytes"
 	crypto_rand "crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"hash/fnv"
 	"io"
 	math_rand "math/rand"
 
-	base65536 "github.com/Nightbug/go-base65536"
-	"github.com/mr-tron/base58/base58"
 	"golang.org/x/crypto/nacl/box"
 )
-
-var baseType = "base58"
-
-func SetBase(s string) (err error) {
-	if s == "base58" {
-		baseType = s
-	} else if s == "base65536" {
-		baseType = s
-	} else {
-		err = errors.New("no such base")
-	}
-	return
-}
 
 type KeyPair struct {
 	Public  string `json:"public"`
@@ -70,14 +56,9 @@ func generateKeyPair() (publicKey, privateKey string, err error) {
 	if err != nil {
 		return
 	}
+	publicKey = base64.URLEncoding.EncodeToString(publicKeyBytes[:])
+	privateKey = base64.URLEncoding.EncodeToString(privateKeyBytes[:])
 
-	if baseType == "base58" {
-		publicKey = base58.FastBase58Encoding(publicKeyBytes[:])
-		privateKey = base58.FastBase58Encoding(privateKeyBytes[:])
-	} else if baseType == "base65536" {
-		publicKey = base65536.Marshal(publicKeyBytes[:])
-		privateKey = base65536.Marshal(privateKeyBytes[:])
-	}
 	return
 }
 
@@ -93,13 +74,8 @@ func generateDeterministicKey(seedBytes []byte) (publicKey, privateKey string) {
 		panic(err)
 	}
 
-	if baseType == "base58" {
-		publicKey = base58.FastBase58Encoding(publicKeyBytes[:])
-		privateKey = base58.FastBase58Encoding(privateKeyBytes[:])
-	} else if baseType == "base65536" {
-		publicKey = base65536.Marshal(publicKeyBytes[:])
-		privateKey = base65536.Marshal(privateKeyBytes[:])
-	}
+	publicKey = base64.URLEncoding.EncodeToString(publicKeyBytes[:])
+	privateKey = base64.URLEncoding.EncodeToString(privateKeyBytes[:])
 	return
 }
 
@@ -111,15 +87,12 @@ func NewDeterministic(passphrase string) (kp KeyPair, err error) {
 }
 
 func keyToBytes(s string) (key *[32]byte, err error) {
-	var keyBytes []byte
-	if baseType == "base58" {
-		keyBytes, err = base58.FastBase58Decoding(s)
-	} else if baseType == "base65536" {
-		err = base65536.Unmarshal([]byte(s), &keyBytes)
-	}
+	keyBytes := make([]byte, base64.URLEncoding.DecodedLen(len(s)))
+	i, err := base64.URLEncoding.Decode(keyBytes, []byte(s))
 	if err != nil {
 		return
 	}
+	keyBytes = keyBytes[:i]
 
 	key = new([32]byte)
 	copy(key[:], keyBytes[:32])
