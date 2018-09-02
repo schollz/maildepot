@@ -30,20 +30,26 @@ func TestMessage(t *testing.T) {
 	assert.Nil(t, err)
 	jeff, err := keypair.New()
 	assert.Nil(t, err)
+	everyone, err := keypair.New()
+	assert.Nil(t, err)
+
+	everyone, err = keypair.NewFromPublic(everyone.Public)
+	assert.Nil(t, err)
+	fmt.Println(everyone)
 
 	msg := []byte("hello, world")
 	m, err := New(bob, []string{bob.Public}, msg)
 	assert.Nil(t, err)
 	recipient, opened, err := m.Open([]keypair.KeyPair{bob})
 	assert.Nil(t, err)
-	assert.Equal(t, recipient, bob.Public)
+	assert.Equal(t, recipient, bob)
 	assert.Equal(t, msg, opened)
 
-	m, err = New(bob, []string{jane.Public, bob.Public}, msg)
+	m, err = New(bob, []string{jane.Public, bob.Public, everyone.Public}, msg)
 	assert.Nil(t, err)
 	recipient, opened, err = m.Open([]keypair.KeyPair{jane})
 	assert.Nil(t, err)
-	assert.Equal(t, recipient, jane.Public)
+	assert.Equal(t, recipient, jane)
 	assert.Equal(t, msg, opened)
 
 	// jeff can't open because its addressed to jane

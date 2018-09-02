@@ -28,7 +28,7 @@ type Message struct {
 // Open will open a message by trying each of my keys and
 // will return the key that opened the message and the
 // descrypted contents
-func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened string, decrypted []byte, err error) {
+func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened keypair.KeyPair, decrypted []byte, err error) {
 	encrypted, err := base64.StdEncoding.DecodeString(m.Message)
 	if err != nil {
 		err = errors.Wrap(err, "message is not decodable")
@@ -46,7 +46,7 @@ func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened string, decrypted []
 			}
 			randomEncryption, err = key.Decrypt(decodedRecipient, m.Sender)
 			if err == nil {
-				keyOpened = key.Public
+				keyOpened = key
 				break
 			}
 		}

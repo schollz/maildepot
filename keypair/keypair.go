@@ -51,6 +51,11 @@ func New(kpLoad ...KeyPair) (kp KeyPair, err error) {
 	return
 }
 
+// NewFromPublic will generate a new key pair from a public key
+func NewFromPublic(publicKey string) (kp KeyPair, err error) {
+	return New(KeyPair{Public: publicKey})
+}
+
 func generateKeyPair() (publicKey, privateKey string, err error) {
 	publicKeyBytes, privateKeyBytes, err := box.GenerateKey(crypto_rand.Reader)
 	if err != nil {
