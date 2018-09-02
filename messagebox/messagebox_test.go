@@ -14,14 +14,17 @@ func BenchmarkOpen(b *testing.B) {
 	bill, _ := keypair.New()
 	jane, _ := keypair.New()
 	jeff, _ := keypair.New()
+	world, _ := keypair.New()
 	// bob sends to jane and jeff a message
-	m, _ := New(bob, []string{jeff.Public, jane.Public}, []byte("hello, world"))
+	m, _ := New(world, bob, []string{jeff.Public, jane.Public}, []byte("hello, world"))
 	for n := 0; n < b.N; n++ {
-		m.Open([]keypair.KeyPair{jeff, jane, bob, bill})
+		m.Open(world, []keypair.KeyPair{jeff, jane, bob, bill})
 	}
 }
 
 func TestMessage(t *testing.T) {
+	world, err := keypair.New()
+	assert.Nil(t, err)
 	bob, err := keypair.New()
 	assert.Nil(t, err)
 	bill, err := keypair.New()
@@ -38,26 +41,32 @@ func TestMessage(t *testing.T) {
 	fmt.Println(everyone)
 
 	msg := []byte("hello, world")
-	m, err := New(bob, []string{bob.Public}, msg)
+	m, err := New(world, bob, []string{bob.Public}, msg)
+	fmt.Println(m)
+
 	assert.Nil(t, err)
-	recipient, opened, err := m.Open([]keypair.KeyPair{bob})
+	recipient, opened, err := m.Open(world, []keypair.KeyPair{bob})
 	assert.Nil(t, err)
 	assert.Equal(t, recipient, bob)
 	assert.Equal(t, msg, opened)
 
-	m, err = New(bob, []string{jane.Public, bob.Public, everyone.Public}, msg)
+	m, err = New(world, bob, []string{jane.Public, bob.Public, everyone.Public}, msg)
 	assert.Nil(t, err)
-	recipient, opened, err = m.Open([]keypair.KeyPair{jane})
+	recipient, opened, err = m.Open(world, []keypair.KeyPair{jane})
 	assert.Nil(t, err)
 	assert.Equal(t, recipient, jane)
 	assert.Equal(t, msg, opened)
 
 	// jeff can't open because its addressed to jane
-	recipient, opened, err = m.Open([]keypair.KeyPair{jeff})
+	recipient, opened, err = m.Open(world, []keypair.KeyPair{jeff})
 	assert.NotNil(t, err)
 
 	// jane can't open if she doesn't know bob exists
-	recipient, opened, err = m.Open([]keypair.KeyPair{bill})
+	recipient, opened, err = m.Open(world, []keypair.KeyPair{bill})
+	assert.NotNil(t, err)
+
+	// can't open, wrong world
+	recipient, opened, err = m.Open(jane, []keypair.KeyPair{jane})
 	assert.NotNil(t, err)
 
 	// Print out a message

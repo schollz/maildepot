@@ -28,12 +28,23 @@ type Message struct {
 // Open will open a message by trying each of my keys and
 // will return the key that opened the message and the
 // descrypted contents
-func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened keypair.KeyPair, decrypted []byte, err error) {
+func (m *Message) Open(world keypair.KeyPair, mykeys []keypair.KeyPair) (keyOpened keypair.KeyPair, decrypted []byte, err error) {
 	encrypted, err := base64.StdEncoding.DecodeString(m.Message)
 	if err != nil {
 		err = errors.Wrap(err, "message is not decodable")
 		return
 	}
+
+	decodedSender, err := base64.StdEncoding.DecodeString(m.Sender)
+	if err != nil {
+		return
+	}
+	decryptedSender, err := world.Decrypt(decodedSender, world.Public)
+	if err != nil {
+		err = errors.Wrap(err, "world cannot decrypt sender")
+		return
+	}
+	senderPublicKey := string(decryptedSender)
 
 	var randomEncryption []byte
 	for _, recipient := range m.Recipients {
@@ -44,7 +55,7 @@ func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened keypair.KeyPair, dec
 				err = errors.Wrap(err, "malformed recipient")
 				return
 			}
-			randomEncryption, err = key.Decrypt(decodedRecipient, m.Sender)
+			randomEncryption, err = key.Decrypt(decodedRecipient, senderPublicKey)
 			if err == nil {
 				keyOpened = key
 				break
@@ -65,7 +76,7 @@ func (m *Message) Open(mykeys []keypair.KeyPair) (keyOpened keypair.KeyPair, dec
 }
 
 // New will generate a new message
-func New(sender keypair.KeyPair, recipients []string, msg []byte) (m Message, err error) {
+func New(world keypair.KeyPair, sender keypair.KeyPair, recipients []string, msg []byte) (m Message, err error) {
 	encrypted, secretKey, err := encryptWithRandomSecret(msg)
 	if err != nil {
 		return
@@ -74,12 +85,19 @@ func New(sender keypair.KeyPair, recipients []string, msg []byte) (m Message, er
 	h.Write([]byte("messagebox101"))
 	h.Write(msg)
 	h.Write([]byte(sender.Public))
+
+	encryptedSender, err := world.Encrypt([]byte(sender.Public), world.Public)
+	if err != nil {
+		return
+	}
+
 	m = Message{
-		Sender:     sender.Public,
+		Sender:     base64.StdEncoding.EncodeToString(encryptedSender),
 		Message:    base64.StdEncoding.EncodeToString(encrypted),
 		Recipients: make([]string, len(recipients)),
 		Hash:       fmt.Sprintf("sha256/%x", h.Sum(nil)),
 	}
+
 	for i, rec := range recipients {
 		encrypted, err2 := sender.Encrypt(secretKey[:], rec)
 		if err != nil {
