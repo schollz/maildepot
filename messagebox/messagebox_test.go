@@ -42,7 +42,9 @@ func TestMessage(t *testing.T) {
 
 	msg := []byte("hello, world")
 	m, err := New(world, bob, []string{bob.Public}, msg)
-	fmt.Println(m)
+	// Print out a message
+	mJ, _ := json.MarshalIndent(m, "", " ")
+	fmt.Println(string(mJ))
 
 	assert.Nil(t, err)
 	recipient, opened, err := m.Open(world, []keypair.KeyPair{bob})
@@ -69,7 +71,4 @@ func TestMessage(t *testing.T) {
 	recipient, opened, err = m.Open(jane, []keypair.KeyPair{jane})
 	assert.NotNil(t, err)
 
-	// Print out a message
-	mJ, _ := json.MarshalIndent(m, "", " ")
-	fmt.Println(string(mJ))
 }
