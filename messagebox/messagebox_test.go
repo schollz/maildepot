@@ -39,7 +39,7 @@ func TestMessage(t *testing.T) {
 	assert.Equal(t, recipient, bob.Public)
 	assert.Equal(t, msg, opened)
 
-	m, err = New(bob, []string{jane.Public}, msg)
+	m, err = New(bob, []string{jane.Public, bob.Public}, msg)
 	assert.Nil(t, err)
 	recipient, opened, err = m.Open([]keypair.KeyPair{jane})
 	assert.Nil(t, err)
@@ -50,7 +50,7 @@ func TestMessage(t *testing.T) {
 	recipient, opened, err = m.Open([]keypair.KeyPair{jeff})
 	assert.NotNil(t, err)
 
-	// jane cna't open if she doesn't know bob exists
+	// jane can't open if she doesn't know bob exists
 	recipient, opened, err = m.Open([]keypair.KeyPair{bill})
 	assert.NotNil(t, err)
 
