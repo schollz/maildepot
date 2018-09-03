@@ -25,6 +25,21 @@ type Message struct {
 	Hash string `json:"hash"`
 }
 
+func (m *Message) IsSameWorld(world keypair.KeyPair) bool {
+	if world.Public == "" {
+		return false
+	}
+	decodedSender, err := base64.StdEncoding.DecodeString(m.Sender)
+	if err != nil {
+		return false
+	}
+	_, err = world.Decrypt(decodedSender, world.Public)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 // Open will open a message by trying each of my keys and
 // will return the key that opened the message and the
 // descrypted contents
