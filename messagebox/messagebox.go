@@ -4,6 +4,7 @@ import (
 	crypto_rand "crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -25,6 +26,23 @@ type Message struct {
 	Hash string `json:"hash"`
 }
 
+func (m *Message) String() string {
+	out, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+func (m *Message) Hash() string {
+	out, err := json.Marshal(m)
+	if err != nil {
+		panic(err)
+	}
+	return string(out)
+}
+
+// IsSameWorld checks to make sure that the message is from the same domain.
 func (m *Message) IsSameWorld(world keypair.KeyPair) bool {
 	if world.Public == "" {
 		return false
