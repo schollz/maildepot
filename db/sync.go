@@ -8,12 +8,12 @@ import (
 	bolt "go.etcd.io/bbolt"
 )
 
-func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, middleKey string, err error) {
+func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, middleKey string, count int, err error) {
 	db.RLock()
 	defer db.RUnlock()
 
 	h64 := xxhash.New64()
-	count := 0
+	count = 0
 	err = db.db.View(func(tx *bolt.Tx) error {
 		// Assume our events bucket exists and has RFC3339 encoded time keys.
 		b := tx.Bucket([]byte(bucket))
@@ -32,7 +32,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 				count++
 			}
 		} else if first == "first" {
-			for k, _ := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.First(); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
@@ -42,7 +42,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 				count++
 			}
 		} else {
-			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
@@ -78,7 +78,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 				cur++
 			}
 		} else if first == "first" {
-			for k, _ := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.First(); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				if cur == count/2 {
 					middleKey = string(k)
 					return nil
@@ -94,7 +94,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 				cur++
 			}
 		} else {
-			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				if cur == count/2 {
 					middleKey = string(k)
 					return nil
@@ -109,7 +109,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 }
 
 func (db *DB) checkRangeOfHashes(bucket, first, last, rangeHashFromOtherDB string) (isEqual bool, err error) {
-	rangeHash, _, err := db.getRangeOfHashes(bucket, first, last)
+	rangeHash, _, _, err := db.getRangeOfHashes(bucket, first, last)
 	if err != nil {
 		return
 	}

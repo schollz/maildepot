@@ -1,6 +1,7 @@
 package db
 
 import (
+	"log"
 	"os"
 	"testing"
 
@@ -22,13 +23,18 @@ func TestDB(t *testing.T) {
 	assert.Nil(t, db.Set("test1", "hello3", "world"))
 	assert.Nil(t, db.Set("test1", "hello4", "world"))
 	assert.Nil(t, db.Set("test1", "hello5", "world"))
+	assert.Nil(t, db.Set("test1", "hello6", "world"))
+	assert.Nil(t, db.Set("test1", "hello7", "world"))
+	assert.Nil(t, db.Set("test1", "hello8", "world"))
+	assert.Nil(t, db.Set("test1", "hello9", "world"))
 	var world string
 	err = db.Get("test1", "hello0", &world)
 	assert.Nil(t, err)
 	assert.Equal(t, "world", world)
 
-	rangeHash, middleKey, err := db.getRangeOfHashes("test1", "hello1", "hello3")
-	assert.Equal(t, "hello2", middleKey)
+	rangeHash, middleKey, count, err := db.getRangeOfHashes("test1", "hello3", "hello5")
+	assert.Equal(t, "hello4", middleKey)
+	assert.Equal(t, 2, count)
 	assert.Nil(t, err)
 
 	db2, err := New("2.db")
@@ -38,12 +44,48 @@ func TestDB(t *testing.T) {
 
 	assert.Nil(t, db2.Set("test1", "hello0", "world"))
 	assert.Nil(t, db2.Set("test1", "hello1", "world"))
-	assert.Nil(t, db2.Set("test1", "hello2", "world"))
 	assert.Nil(t, db2.Set("test1", "hello3", "world"))
 	assert.Nil(t, db2.Set("test1", "hello4", "world"))
 	assert.Nil(t, db2.Set("test1", "hello5", "world"))
-	isEqual, err := db2.checkRangeOfHashes("test1", "hello1", "hello3", rangeHash)
+	assert.Nil(t, db2.Set("test1", "hello7", "world"))
+	assert.Nil(t, db2.Set("test1", "hello8", "world"))
+	assert.Nil(t, db2.Set("test1", "hello9", "world"))
+
+	isEqual, err := db2.checkRangeOfHashes("test1", "hello3", "hello5", rangeHash)
 	assert.True(t, isEqual)
 	assert.Nil(t, err)
 
+	assert.Nil(t, find("test1", "first", "last", db, db2))
+}
+
+func find(bucket, first, last string, db *DB, db2 *DB) (err error) {
+	log.Println(first, last)
+	rangeHash, middleKey, count, err := db.getRangeOfHashes(bucket, first, last)
+	if err != nil {
+		return
+	}
+	isEqual, err := db2.checkRangeOfHashes(bucket, first, last, rangeHash)
+	if err != nil {
+		return
+	}
+	if isEqual {
+		return
+	}
+
+	// not equal, search some more
+	if count == 1 {
+		log.Println(first)
+		return
+	}
+
+	err = find(bucket, first, middleKey, db, db2)
+	if err != nil {
+		return
+	}
+	err = find(bucket, middleKey, last, db, db2)
+	if err != nil {
+		return
+	}
+
+	return
 }
