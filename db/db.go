@@ -113,7 +113,7 @@ func (db *DB) GetKeysInRange(bucket, first, last string) (keys []string, err err
 				keys = append(keys, string(k))
 			}
 		} else if first == "first" {
-			for k, _ := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.First(); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				keys = append(keys, string(k))
 			}
 		} else if last == "last" {
@@ -121,7 +121,7 @@ func (db *DB) GetKeysInRange(bucket, first, last string) (keys []string, err err
 				keys = append(keys, string(k))
 			}
 		} else {
-			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
 				keys = append(keys, string(k))
 			}
 		}

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -19,7 +20,6 @@ func TestDB(t *testing.T) {
 	assert.Nil(t, db.NewBucket("test1"))
 	assert.Nil(t, db.Set("test1", "hello0", "world"))
 	assert.Nil(t, db.Set("test1", "hello1", "world"))
-	assert.Nil(t, db.Set("test1", "hello2", "world"))
 	assert.Nil(t, db.Set("test1", "hello3", "world"))
 	assert.Nil(t, db.Set("test1", "hello4", "world"))
 	assert.Nil(t, db.Set("test1", "hello5", "world"))
@@ -44,22 +44,28 @@ func TestDB(t *testing.T) {
 
 	assert.Nil(t, db2.Set("test1", "hello0", "world"))
 	assert.Nil(t, db2.Set("test1", "hello1", "world"))
+	assert.Nil(t, db2.Set("test1", "hello2", "world"))
 	assert.Nil(t, db2.Set("test1", "hello3", "world"))
 	assert.Nil(t, db2.Set("test1", "hello4", "world"))
 	assert.Nil(t, db2.Set("test1", "hello5", "world"))
+	assert.Nil(t, db2.Set("test1", "hello6", "world"))
 	assert.Nil(t, db2.Set("test1", "hello7", "world"))
-	assert.Nil(t, db2.Set("test1", "hello8", "world"))
 	assert.Nil(t, db2.Set("test1", "hello9", "world"))
 
 	isEqual, err := db2.checkRangeOfHashes("test1", "hello3", "hello5", rangeHash)
 	assert.True(t, isEqual)
 	assert.Nil(t, err)
 
-	assert.Nil(t, find("test1", "first", "last", db, db2))
+	fmt.Println(find("test1", "first", "last", db, db2, []toExchange{}))
 }
 
-func find(bucket, first, last string, db *DB, db2 *DB) (err error) {
-	log.Println(first, last)
+type toExchange struct {
+	first string
+	last  string
+}
+
+func find(bucket, first, last string, db *DB, db2 *DB, exchange1 []toExchange) (exchange2 []toExchange, err error) {
+	exchange2 = exchange1
 	rangeHash, middleKey, count, err := db.getRangeOfHashes(bucket, first, last)
 	if err != nil {
 		return
@@ -74,15 +80,16 @@ func find(bucket, first, last string, db *DB, db2 *DB) (err error) {
 
 	// not equal, search some more
 	if count == 1 {
-		log.Println(first)
+		log.Println("exchange", first, last)
+		exchange2 = append(exchange2, toExchange{first, last})
 		return
 	}
 
-	err = find(bucket, first, middleKey, db, db2)
+	exchange2, err = find(bucket, first, middleKey, db, db2, exchange2)
 	if err != nil {
 		return
 	}
-	err = find(bucket, middleKey, last, db, db2)
+	exchange2, err = find(bucket, middleKey, last, db, db2, exchange2)
 	if err != nil {
 		return
 	}
