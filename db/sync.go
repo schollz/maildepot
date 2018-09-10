@@ -27,26 +27,22 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 		max := []byte(last)
 
 		if first == "first" && last == "last" {
-			for k, v := c.First(); k != nil; k, v = c.Next() {
-				fmt.Printf("%s: %s\n", k, v)
+			for k, _ := c.First(); k != nil; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
 		} else if first == "first" {
-			for k, v := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
-				fmt.Printf("%s: %s\n", k, v)
+			for k, _ := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
 		} else if last == "last" {
-			for k, v := c.Seek(min); k != nil; k, v = c.Next() {
-				fmt.Printf("%s: %s\n", k, v)
+			for k, _ := c.Seek(min); k != nil; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
 		} else {
-			for k, v := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, v = c.Next() {
-				fmt.Printf("%s: %s\n", k, v)
+			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
 				h64.WriteString(string(k))
 				count++
 			}
@@ -60,15 +56,53 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 	rangeHash = fmt.Sprintf("%x", h64.Sum64())
 
 	err = db.db.View(func(tx *bolt.Tx) error {
-		c := tx.Bucket([]byte(bucket)).Cursor()
+		// Assume our events bucket exists and has RFC3339 encoded time keys.
+		b := tx.Bucket([]byte(bucket))
+		if b == nil {
+			return fmt.Errorf("bucket '%s' does not exist", bucket)
+		}
+		c := b.Cursor()
+
+		// Our time range spans the 90's decade.
+		min := []byte(first)
+		max := []byte(last)
+
 		cur := 0
-		for k, _ := c.First(); k != nil; k, _ = c.Next() {
-			cur++
-			if cur == count/2 {
-				middleKey = string(k)
-				return nil
+
+		if first == "first" && last == "last" {
+			for k, _ := c.First(); k != nil; k, _ = c.Next() {
+				if cur == count/2 {
+					middleKey = string(k)
+					return nil
+				}
+				cur++
+			}
+		} else if first == "first" {
+			for k, _ := c.First(); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+				if cur == count/2 {
+					middleKey = string(k)
+					return nil
+				}
+				cur++
+			}
+		} else if last == "last" {
+			for k, _ := c.Seek(min); k != nil; k, _ = c.Next() {
+				if cur == count/2 {
+					middleKey = string(k)
+					return nil
+				}
+				cur++
+			}
+		} else {
+			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) <= 0; k, _ = c.Next() {
+				if cur == count/2 {
+					middleKey = string(k)
+					return nil
+				}
+				cur++
 			}
 		}
+
 		return nil
 	})
 	return
