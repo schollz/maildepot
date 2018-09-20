@@ -1,6 +1,7 @@
 package keypair
 
 import (
+	"encoding/base64"
 	"fmt"
 	"testing"
 
@@ -11,6 +12,18 @@ func BenchmarkNew(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		New()
 	}
+}
+
+func TestTweetNaClKeyPair(t *testing.T) {
+	// keypair from https://tweetnacl.js.org/#/box
+	me, err := New(KeyPair{
+		Public:  "4Bu5tqhJ1qSbbnytbpNYZw+I8kOVQ/4y9VjUyGaL9Rg=",
+		Private: "CyPIQzF7xdE/rR6Uc/fV2pO0epXNhTpTbvRvOb3osv0=",
+	})
+	assert.Nil(t, err)
+	enc, _ := me.Encrypt([]byte("hello, world"), me.Public)
+	fmt.Println("Nonce:", base64.StdEncoding.EncodeToString(GetNonce(enc)))
+	fmt.Println("Box:", base64.StdEncoding.EncodeToString(enc[24:]))
 }
 
 func TestBasic(t *testing.T) {

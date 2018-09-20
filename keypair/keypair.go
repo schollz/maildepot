@@ -61,8 +61,8 @@ func generateKeyPair() (publicKey, privateKey string, err error) {
 	if err != nil {
 		return
 	}
-	publicKey = base64.URLEncoding.EncodeToString(publicKeyBytes[:])
-	privateKey = base64.URLEncoding.EncodeToString(privateKeyBytes[:])
+	publicKey = base64.StdEncoding.EncodeToString(publicKeyBytes[:])
+	privateKey = base64.StdEncoding.EncodeToString(privateKeyBytes[:])
 
 	return
 }
@@ -79,8 +79,8 @@ func generateDeterministicKey(seedBytes []byte) (publicKey, privateKey string) {
 		panic(err)
 	}
 
-	publicKey = base64.URLEncoding.EncodeToString(publicKeyBytes[:])
-	privateKey = base64.URLEncoding.EncodeToString(privateKeyBytes[:])
+	publicKey = base64.StdEncoding.EncodeToString(publicKeyBytes[:])
+	privateKey = base64.StdEncoding.EncodeToString(privateKeyBytes[:])
 	return
 }
 
@@ -92,8 +92,8 @@ func NewDeterministic(passphrase string) (kp KeyPair, err error) {
 }
 
 func keyToBytes(s string) (key *[32]byte, err error) {
-	keyBytes := make([]byte, base64.URLEncoding.DecodedLen(len(s)))
-	i, err := base64.URLEncoding.Decode(keyBytes, []byte(s))
+	keyBytes := make([]byte, base64.StdEncoding.DecodedLen(len(s)))
+	i, err := base64.StdEncoding.Decode(keyBytes, []byte(s))
 	if err != nil {
 		return
 	}
@@ -151,6 +151,12 @@ func decryptWithKeyPair(enc []byte, senderPublicKey, recipientPrivateKey *[32]by
 		err = errors.New("keypair decryption failed")
 	}
 	return
+}
+
+func GetNonce(enc []byte) []byte {
+	var decryptNonce [24]byte
+	copy(decryptNonce[:], enc[:24])
+	return decryptNonce[:]
 }
 
 // sliceForAppend takes a slice and a requested number of bytes. It returns a
