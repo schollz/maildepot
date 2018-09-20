@@ -1,6 +1,7 @@
 package messagebox
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -20,6 +21,23 @@ func BenchmarkOpen(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		m.Open(world, []keypair.KeyPair{jeff, jane, bob, bill})
 	}
+}
+
+func TestTweetNacl(t *testing.T) {
+	// from https://tweetnacl.js.org/#/secretbox
+	key := "RXIBnxEifbR1xHjrTjS05Dr9q4u4gNwwLH7jYqZfy5o="
+	nonce := "/Cc4CCyMTK2n6wFUx7ZiDNbj3cIqR11I"
+	box := "hSFSqfPaz46d5A5K77sSahDnYjvQvBNap0zirA=="
+
+	nonceBytes, _ := base64.StdEncoding.DecodeString(nonce)
+	encryptedBytes, _ := base64.StdEncoding.DecodeString(box)
+	encryptedBytes = append(nonceBytes, encryptedBytes...)
+	keyBytes, _ := base64.StdEncoding.DecodeString(key)
+	var keybytes32 [32]byte
+	copy(keybytes32[:], keyBytes[:])
+	m, err := decrypt(encryptedBytes, keybytes32)
+	assert.Equal(t, []byte("hello, world"), m)
+	assert.Nil(t, err)
 }
 
 func TestMessage(t *testing.T) {

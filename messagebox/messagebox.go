@@ -34,7 +34,7 @@ func (m *Message) String() string {
 	return string(out)
 }
 
-func (m *Message) Hash() string {
+func (m *Message) HashMessage() string {
 	out, err := json.Marshal(m)
 	if err != nil {
 		panic(err)
