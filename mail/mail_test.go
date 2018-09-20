@@ -2,7 +2,6 @@ package mail
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"testing"
 
@@ -40,53 +39,28 @@ func TestTweetNacl(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestMessage(t *testing.T) {
+func TestBasic(t *testing.T) {
 	world, err := keypair.New()
 	assert.Nil(t, err)
-	bob, err := keypair.New()
+	fmt.Printf("world: %+v\n", world)
+	msg, err := New(world, world, []string{world.Public}, []byte("hello, world"))
 	assert.Nil(t, err)
-	bill, err := keypair.New()
+	fmt.Printf("msg: %+v\n", msg)
+	openMsg, err := msg.Open(world, []keypair.KeyPair{world})
 	assert.Nil(t, err)
-	jane, err := keypair.New()
-	assert.Nil(t, err)
-	jeff, err := keypair.New()
-	assert.Nil(t, err)
-	everyone, err := keypair.New()
-	assert.Nil(t, err)
+	fmt.Printf("open msg: %+v\n", openMsg)
+}
 
-	everyone, err = keypair.NewFromPublic(everyone.Public)
+func TestMulti(t *testing.T) {
+	world, err := keypair.New()
 	assert.Nil(t, err)
-	fmt.Println(everyone)
+	bob, _ := keypair.New()
 
-	msg := []byte("hello, world")
-	m, err := New(world, bob, []string{bob.Public}, msg)
-	// Print out a message
-	mJ, _ := json.MarshalIndent(m, "", " ")
-	fmt.Println(string(mJ))
-
+	fmt.Printf("world: %+v\n", world)
+	msg, err := New(world, world, []string{bob.Public}, []byte("hello, world"))
 	assert.Nil(t, err)
-	recipient, opened, err := m.Open(world, []keypair.KeyPair{bob})
+	fmt.Printf("msg: %+v\n", msg)
+	openMsg, err := msg.Open(world, []keypair.KeyPair{world})
 	assert.Nil(t, err)
-	assert.Equal(t, recipient, bob)
-	assert.Equal(t, msg, opened)
-
-	m, err = New(world, bob, []string{jane.Public, bob.Public, everyone.Public}, msg)
-	assert.Nil(t, err)
-	recipient, opened, err = m.Open(world, []keypair.KeyPair{jane})
-	assert.Nil(t, err)
-	assert.Equal(t, recipient, jane)
-	assert.Equal(t, msg, opened)
-
-	// jeff can't open because its addressed to jane
-	recipient, opened, err = m.Open(world, []keypair.KeyPair{jeff})
-	assert.NotNil(t, err)
-
-	// jane can't open if she doesn't know bob exists
-	recipient, opened, err = m.Open(world, []keypair.KeyPair{bill})
-	assert.NotNil(t, err)
-
-	// can't open, wrong world
-	recipient, opened, err = m.Open(jane, []keypair.KeyPair{jane})
-	assert.NotNil(t, err)
-
+	fmt.Printf("open msg: %+v\n", openMsg)
 }

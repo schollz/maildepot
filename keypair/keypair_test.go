@@ -26,6 +26,16 @@ func TestTweetNaClKeyPair(t *testing.T) {
 	fmt.Println("Box:", base64.StdEncoding.EncodeToString(enc[24:]))
 }
 
+func TestIdea(t *testing.T) {
+	world, _ := New()
+	bob, _ := New()
+	enc, _ := world.Encrypt([]byte("hello, world"), bob.Public)
+	_, err := world.Decrypt(enc, world.Public)
+	assert.NotNil(t, err)
+	_, err = world.Decrypt(enc, bob.Public)
+	assert.Nil(t, err)
+}
+
 func TestBasic(t *testing.T) {
 	bob, err := New()
 	fmt.Println(bob.Public)
