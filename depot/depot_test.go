@@ -1,7 +1,10 @@
 package depot
 
 import (
+	"encoding/base64"
+	"encoding/binary"
 	"fmt"
+	"hash/adler32"
 	"log"
 	"os"
 	"testing"
@@ -20,6 +23,7 @@ func TestDB(t *testing.T) {
 	assert.Nil(t, db.NewBucket("test1"))
 	assert.Nil(t, db.Set("test1", "hello0", "world"))
 	assert.Nil(t, db.Set("test1", "hello1", "world"))
+	// assert.Nil(t, db.Set("test1", "hello2", "world"))
 	assert.Nil(t, db.Set("test1", "hello3", "world"))
 	assert.Nil(t, db.Set("test1", "hello4", "world"))
 	assert.Nil(t, db.Set("test1", "hello5", "world"))
@@ -42,14 +46,16 @@ func TestDB(t *testing.T) {
 	assert.Nil(t, err)
 	defer db2.Close()
 
-	// assert.Nil(t, db2.Set("test1", "hello0", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello1", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello2", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello3", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello4", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello5", "world"))
-	// assert.Nil(t, db2.Set("test1", "hello6", "world"))
-
+	assert.Nil(t, db2.Set("test1", "hello0", "world"))
+	assert.Nil(t, db2.Set("test1", "hello1", "world"))
+	assert.Nil(t, db2.Set("test1", "hello2", "world"))
+	assert.Nil(t, db2.Set("test1", "hello3", "world"))
+	assert.Nil(t, db2.Set("test1", "hello4", "world"))
+	assert.Nil(t, db2.Set("test1", "hello5", "world"))
+	assert.Nil(t, db2.Set("test1", "hello6", "world"))
+	// assert.Nil(t, db2.Set("test1", "hello7", "world"))
+	// assert.Nil(t, db2.Set("test1", "hello8", "world"))
+	// assert.Nil(t, db2.Set("test1", "hello9", "world"))
 	isEqual, err := db2.checkRangeOfHashes("test1", "hello3", "hello5", rangeHash)
 	assert.True(t, isEqual)
 	assert.Nil(t, err)
@@ -92,6 +98,7 @@ func find(bucket, first, last string, db *DB, db2 *DB, exchange1 []toExchange) (
 	if err != nil {
 		return
 	}
+	log.Println("checking", rangeHash)
 	isEqual, err := db2.checkRangeOfHashes(bucket, first, last, rangeHash)
 	if err != nil {
 		return
@@ -117,4 +124,14 @@ func find(bucket, first, last string, db *DB, db2 *DB, exchange1 []toExchange) (
 	}
 
 	return
+}
+
+func TestAdler(t *testing.T) {
+	adlerHash := adler32.New()
+	adlerHash.Write([]byte("hello, world"))
+	adlerHash.Write([]byte("hello, world2"))
+
+	a := make([]byte, 4)
+	binary.LittleEndian.PutUint32(a, adlerHash.Sum32())
+	fmt.Println(base64.StdEncoding.EncodeToString(a))
 }

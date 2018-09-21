@@ -3,8 +3,8 @@ package depot
 import (
 	"bytes"
 	"fmt"
+	"hash/adler32"
 
-	"github.com/OneOfOne/xxhash"
 	bolt "go.etcd.io/bbolt"
 )
 
@@ -12,7 +12,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 	db.RLock()
 	defer db.RUnlock()
 
-	h64 := xxhash.New64()
+	a32 := adler32.New()
 	count = 0
 	err = db.db.View(func(tx *bolt.Tx) error {
 		// Assume our events bucket exists and has RFC3339 encoded time keys.
@@ -28,22 +28,22 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 
 		if first == "first" && last == "last" {
 			for k, _ := c.First(); k != nil; k, _ = c.Next() {
-				h64.WriteString(string(k))
+				a32.Write(k)
 				count++
 			}
 		} else if first == "first" {
 			for k, _ := c.First(); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
-				h64.WriteString(string(k))
+				a32.Write(k)
 				count++
 			}
 		} else if last == "last" {
 			for k, _ := c.Seek(min); k != nil; k, _ = c.Next() {
-				h64.WriteString(string(k))
+				a32.Write(k)
 				count++
 			}
 		} else {
 			for k, _ := c.Seek(min); k != nil && bytes.Compare(k, max) < 0; k, _ = c.Next() {
-				h64.WriteString(string(k))
+				a32.Write(k)
 				count++
 			}
 		}
@@ -53,7 +53,7 @@ func (db *DB) getRangeOfHashes(bucket, first, last string) (rangeHash string, mi
 	if err != nil {
 		return
 	}
-	rangeHash = fmt.Sprintf("%x", h64.Sum64())
+	rangeHash = fmt.Sprintf("%x", a32.Sum32())
 
 	err = db.db.View(func(tx *bolt.Tx) error {
 		// Assume our events bucket exists and has RFC3339 encoded time keys.
