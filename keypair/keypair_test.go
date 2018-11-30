@@ -26,6 +26,26 @@ func TestTweetNaClKeyPair(t *testing.T) {
 	fmt.Println("Box:", base64.StdEncoding.EncodeToString(enc[24:]))
 }
 
+func ExampleTweetNaClKeyPair2() {
+	// keypair from https://tweetnacl.js.org/#/box
+	me, err := New(KeyPair{
+		Public:  "4zFzzJjggRJMM4UNkiH41wtohL581KfIgBc5Anx3KEo=",
+		Private: "yHBVdORHr38L2Lt8GmhsQX+vMTJqF3/Ytrkfku/3Q3o=",
+	})
+	if err != nil {
+		fmt.Println(err)
+	}
+	nonce := "V5g2urYzjiF/sx6SUprIrosI/GjC+YJu"
+	box := "G8qz9DF5dRHJ8MOEgktZT7lZqAqqUzHLAkwVLg=="
+	dec, err := me.DecryptBase64(nonce+box, me.Public)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(dec))
+	// Output:
+	// hello, world
+}
+
 func TestIdea(t *testing.T) {
 	world, _ := New()
 	bob, _ := New()

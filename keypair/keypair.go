@@ -124,6 +124,20 @@ func (kp KeyPair) Decrypt(encrypted []byte, senderPublicKey string) (msg []byte,
 	return
 }
 
+// DecryptBase64 a message
+func (kp KeyPair) DecryptBase64(encryptedBase64 string, senderPublicKey string) (msg []byte, err error) {
+	sender, err := New(KeyPair{Public: senderPublicKey})
+	if err != nil {
+		return
+	}
+	encrypted, err := base64.StdEncoding.DecodeString(encryptedBase64)
+	if err != nil {
+		return
+	}
+	msg, err = decryptWithKeyPair(encrypted, sender.public, kp.private)
+	return
+}
+
 func encryptWithKeyPair(msg []byte, senderPrivateKey, recipientPublicKey *[32]byte) (encrypted []byte, err error) {
 	// You must use a different nonce for each message you encrypt with the
 	// same key. Since the nonce here is 192 bits long, a random value
